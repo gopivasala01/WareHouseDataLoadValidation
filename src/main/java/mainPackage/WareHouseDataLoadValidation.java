@@ -68,7 +68,7 @@ public class WareHouseDataLoadValidation {
 
     static boolean executeFirstQuery(Statement statement, ResultSet resultSet) throws SQLException {
         // First query
-        String firstQuery = "SELECT * FROM WareHouseDataLoadValidation WHERE CONVERT(date, JSONCountRetrievalDate) = CONVERT(date, GETDATE())AND JSONCount IS NOT NULL AND StagingTableCount IS NOT NULL AND ProdTableCount IS NOT NULL";
+        String firstQuery = "SELECT * FROM WareHouseDataLoadValidation WHERE CONVERT(date, JSONCountRetrievalDate) = CONVERT(date, GETDATE()) AND JSONCount IS NOT NULL AND StagingTableCount IS NOT NULL AND ProdTableCount IS NOT NULL";
         resultSet = statement.executeQuery(firstQuery);
 
         // Checking if the result set has more than 0 rows
@@ -135,7 +135,7 @@ public class WareHouseDataLoadValidation {
         String smtpHost = "smtp.office365.com";
         String smtpPort = "587";
         String emailFrom = "santosh.p@beetlerim.com";
-        String emailTo = "gopi.v@beetlerim.com, ratna@beetlerim.com";
+        String emailTo = "gopi.v@beetlerim.com, ratna@beetlerim.com , santosh.p@beetlerim.com";
 
         // Sender's credentials
         final String username = "santosh.p@beetlerim.com";
