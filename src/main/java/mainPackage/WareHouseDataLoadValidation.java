@@ -38,8 +38,6 @@ public class WareHouseDataLoadValidation {
         Statement statement = null;
         ResultSet resultSet = null;
 
-        boolean firstQueryHasData = false; // Flag to indicate if the first query has data
-
         try {
             // Establishing a connection to the database
             connection = DriverManager.getConnection(CONNECTION_URL);
@@ -47,41 +45,23 @@ public class WareHouseDataLoadValidation {
             // Creating a statement
             statement = connection.createStatement();
 
-            // Execute queries
-            firstQueryHasData = executeFirstQuery(statement, resultSet);
-
-            if (firstQueryHasData) {
-                executeSecondQuery(statement, resultSet);
-                sendEmail();
-            }
+            // Execute the second query
+            executeSecondQuery(statement, resultSet);
+            sendEmail();
 
         } finally {
             // Closing the resources
             closeResources(resultSet, statement, connection);
         }
-
-        // If the first query did not return any data, return from the main method
-        if (!firstQueryHasData) {
-            System.out.println("No data found for the first query. Exiting.");
-        }
-    }
-
-    static boolean executeFirstQuery(Statement statement, ResultSet resultSet) throws SQLException {
-        // First query
-        String firstQuery = "SELECT * FROM WareHouseDataLoadValidation WHERE CONVERT(date, JSONCountRetrievalDate) = CONVERT(date, GETDATE()) AND JSONCount IS NOT NULL AND StagingTableCount IS NOT NULL AND ProdTableCount IS NOT NULL";
-        resultSet = statement.executeQuery(firstQuery);
-
-        // Checking if the result set has more than 0 rows
-        return resultSet.isBeforeFirst();
     }
 
     static void executeSecondQuery(Statement statement, ResultSet resultSet) throws SQLException, IOException {
         // Second query
-        String secondQuery = "SELECT TableName, Company, JSONCount, StagingTableCount, ProdTableCount, JSONCountRetrievalDate " +
-                "FROM WareHouseDataLoadValidation " +
-                "WHERE CONVERT(date, JSONCountRetrievalDate) = CONVERT(date, GETDATE()) " + 
-                "AND JSONCount <> StagingTableCount AND StagingTableCount <> ProdTableCount AND ProdTableCount <> JSONCount " +
-                "ORDER BY TableName";
+        String secondQuery = "Select TableName, Company, JSONCount,StagingTableCount, ProdTableCount,JSONCountRetrievalDate\r\n"
+                + "from WareHouseDataLoadValidation  \r\n"
+                + "where Convert(date,JSONCountRetrievalDate) =Convert(date, getdate()-1) --order by TableName desc\r\n"
+                + "and (JSONCount<>StagingTableCount or StagingTableCount<>ProdTableCount or ProdTableCount<>JSONCount)\r\n"
+                + "order by TableName desc";
 
         resultSet = statement.executeQuery(secondQuery);
 
@@ -100,7 +80,6 @@ public class WareHouseDataLoadValidation {
 
         int rowNum = 1;
         // Iterate over the result set and populate the sheet
-     // Iterate over the result set and populate the sheet
         while (resultSet.next()) {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(resultSet.getString("TableName"));
