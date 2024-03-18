@@ -7,23 +7,21 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
+import java.text.SimpleDateFormat;
+import java.util.Properties;
 
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
-import java.util.Properties;
 
-import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class WareHouseDataLoadValidation {
-    // JDBC URL, username, and password of SQL server
     static final String CONNECTION_URL = "jdbc:sqlserver://azrsrv001.database.windows.net;databaseName=HomeRiverDB;user=service_sql02;password=xzqcoK7T;encrypt=true;trustServerCertificate=true;";
-    static final String FILE_PATH = "output.xlsx";
+    static String FILE_PATH = "DataLoadsValidation.xlsx"; // Updated file path
 
     public static void main(String[] args) {
         try {
@@ -39,24 +37,17 @@ public class WareHouseDataLoadValidation {
         ResultSet resultSet = null;
 
         try {
-            // Establishing a connection to the database
             connection = DriverManager.getConnection(CONNECTION_URL);
-
-            // Creating a statement
             statement = connection.createStatement();
-
-            // Execute the second query
             executeSecondQuery(statement, resultSet);
             sendEmail();
 
         } finally {
-            // Closing the resources
             closeResources(resultSet, statement, connection);
         }
     }
 
     static void executeSecondQuery(Statement statement, ResultSet resultSet) throws SQLException, IOException {
-        // Second query
         String secondQuery = "Select TableName, Company, JSONCount,StagingTableCount, ProdTableCount,JSONCountRetrievalDate\r\n"
                 + "from WareHouseDataLoadValidation  \r\n"
                 + "where Convert(date,JSONCountRetrievalDate) =Convert(date, getdate()-1) --order by TableName desc\r\n"
@@ -65,11 +56,9 @@ public class WareHouseDataLoadValidation {
 
         resultSet = statement.executeQuery(secondQuery);
 
-        // Create a workbook and a sheet
         XSSFWorkbook workbook = new XSSFWorkbook();
         org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Data");
 
-        // Create header row
         Row headerRow = sheet.createRow(0);
         headerRow.createCell(0).setCellValue("TableName");
         headerRow.createCell(1).setCellValue("Company");
@@ -79,7 +68,6 @@ public class WareHouseDataLoadValidation {
         headerRow.createCell(5).setCellValue("JSONCountRetrievalDate");
 
         int rowNum = 1;
-        // Iterate over the result set and populate the sheet
         while (resultSet.next()) {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(resultSet.getString("TableName"));
@@ -87,22 +75,26 @@ public class WareHouseDataLoadValidation {
             if (resultSet.getObject("JSONCount") != null) {
                 row.createCell(2).setCellValue(resultSet.getInt("JSONCount"));
             } else {
-                row.createCell(2).setCellValue(""); // Set empty string instead of 0
+                row.createCell(2).setCellValue("");
             }
             if (resultSet.getObject("StagingTableCount") != null) {
                 row.createCell(3).setCellValue(resultSet.getInt("StagingTableCount"));
             } else {
-                row.createCell(3).setCellValue(""); // Set empty string instead of 0
+                row.createCell(3).setCellValue("");
             }
             if (resultSet.getObject("ProdTableCount") != null) {
                 row.createCell(4).setCellValue(resultSet.getInt("ProdTableCount"));
             } else {
-                row.createCell(4).setCellValue(""); // Set empty string instead of 0
+                row.createCell(4).setCellValue("");
             }
             row.createCell(5).setCellValue(resultSet.getString("JSONCountRetrievalDate"));
         }
 
-        // Write the workbook to a file
+        // Constructing file name with current date
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MMddyyyy");
+        String formattedDate = dateFormat.format(new java.util.Date());
+        FILE_PATH = "DataLoadsValidation_" + formattedDate + ".xlsx";
+
         FileOutputStream fileOutputStream = new FileOutputStream(FILE_PATH);
         workbook.write(fileOutputStream);
         fileOutputStream.close();
@@ -110,17 +102,13 @@ public class WareHouseDataLoadValidation {
     }
 
     static void sendEmail() throws MessagingException {
-        // SMTP configuration
         String smtpHost = "smtp.office365.com";
         String smtpPort = "587";
         String emailFrom = "santosh.p@beetlerim.com";
-        String emailTo = "gopi.v@beetlerim.com, ratna@beetlerim.com , santosh.p@beetlerim.com";
-
-        // Sender's credentials
+        String emailTo = "gopi.v@beetlerim.com, ratna@beetlerim.com , santosh.p@beetlerim.com, dahoffman@homeriver.com";
         final String username = "santosh.p@beetlerim.com";
         final String password = "Welcome@123";
 
-        // Email properties
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
@@ -128,20 +116,21 @@ public class WareHouseDataLoadValidation {
         props.put("mail.smtp.port", smtpPort);
         props.put("mail.smtp.ssl.protocols", "TLSv1.2");
 
-        // Create a Session object
         Session session = Session.getInstance(props, new javax.mail.Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {
                 return new PasswordAuthentication(username, password);
             }
         });
 
-        // Create a MimeMessage object
+        // Format the date as "MM/dd/yyyy"
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+        String formattedDate = dateFormat.format(new java.util.Date());
+
         Message message = new MimeMessage(session);
         message.setFrom(new InternetAddress(emailFrom));
         message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(emailTo));
-        message.setSubject("Data from SQL Server");
+        message.setSubject("Data Loads Validation for date: " + formattedDate);
 
-        // Create MimeBodyPart and attach the Excel file
         MimeBodyPart mimeBodyPart = new MimeBodyPart();
         try {
             mimeBodyPart.attachFile(FILE_PATH);
@@ -151,14 +140,19 @@ public class WareHouseDataLoadValidation {
             e.printStackTrace();
         }
 
-        // Create Multipart object and add MimeBodyPart objects to it
+        MimeBodyPart messageBodyPart = new MimeBodyPart();
+        try {
+            messageBodyPart.setText("Hi All,\n\nPlease find the attachment for the count differences in the loads:\n\nRegards,\nHomeRiver Group.");
+        } catch (MessagingException e) {
+            e.printStackTrace();
+        }
+
         Multipart multipart = new MimeMultipart();
         multipart.addBodyPart(mimeBodyPart);
+        multipart.addBodyPart(messageBodyPart);
 
-        // Set the content of the email
         message.setContent(multipart);
 
-        // Send the email
         session.setDebug(true);
         Transport.send(message);
 
